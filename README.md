@@ -1,0 +1,2 @@
+# zarnoth
+A Twitch bot

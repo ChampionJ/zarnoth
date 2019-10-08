@@ -2,11 +2,35 @@ const tmi = require("tmi.js");
 const options = require("./options");
 const fs = require('fs');
 
-let settings = fs.readFileSync('settings.json');
-settings = JSON.parse(settings);
+const settingsPath = "settings.json";
+
+let settings;
+//check settings
+try {
+    if(fs.existsSync(settingsPath)){
+        settings = fs.readFileSync('settings.json');
+        settings = JSON.parse(settings);
+    } else {
+        settings = makeSettings();
+        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 4));
+    }
+} catch(err){
+    console.log(err);
+}
 
 const webhook = require("webhook-discord");
-const Hook = new webhook.Webhook(settings.webhookEndpoint);
+let webhooks = [];
+
+settings.listeners.forEach(element => {
+    if(element.webhook != ""){
+        webhooks.push(new webhook.Webhook(element.webhookAddress));
+    }
+});
+
+
+
+
+//const Hook = new webhook.Webhook(settings.webhookEndpoint);
 
 // Create a client with our options
 const client = new tmi.client(options);
@@ -34,7 +58,30 @@ function onMessageHandler (target, context, msg, self) {
     let messageString = msg.trim();
 
     if(messageString[0] != '!'){ //check if they're trying to activate a command
-        if(!listenForMentions)
+        settings.listeners.forEach((element, index) => {
+            if(element.channels.find(channel => channel == target.substr(1))){
+                console.log("searching in " + element.name);
+                if(element.currentlyListening){
+                    if (new RegExp(element.aliases.join("|")).test(messageString.toLowerCase())) {
+                        // At least one match
+                        console.log(`* Name was mentioned`);
+                        //const sender = target.<display-name>;
+                        let webhookmsg = new webhook.MessageBuilder()
+                            .setName("Zarnoth Bot")
+                            .setColor(element.color)
+                            .addField(context["display-name"] + " " +element.messageText, messageString);
+                        if(element.discordUserID != null)
+                            webhookmsg.setText(`<@${element.discordUserID}>`);
+                        webhooks[index].send(webhookmsg);
+                            //Hook.send(webhookmsg);
+                        
+                    }
+                }
+            }
+        });
+    }
+    /*
+    if(!listenForMentions)
             return;
         if (new RegExp(personalAliases).test(messageString.toLowerCase())) {
             // At least one match
@@ -59,12 +106,13 @@ function onMessageHandler (target, context, msg, self) {
         }
         return;
     }
+    */
 
 
 
-    // if(messageString[0] != '!'){ //check if they're trying to activate a command
-    //     return;
-    // }
+    if(messageString[0] != '!'){ //check if they're trying to activate a command
+        return;
+    }
     messageString = messageString.substr(1);
     const commandTriggered = messageString.split(" ")[0];
     // If the command is known, let's execute it
@@ -122,4 +170,25 @@ function onConnectedHandler (addr, port) {
 }
 function checkIfMod(context, target){
     return context.mod == true || context.username == target.substr(1);
+}
+
+function makeListener(name, channels, aliases, webhookURL, shouldBeListening, messageText, color, discordUserID = null){
+    let listener = {
+        name : name,
+        channels : channels,
+        aliases : aliases,
+        webhookAddress : webhookURL,
+        currentlyListening : shouldBeListening,
+        messageText : messageText,
+        color: color,
+        discordUserID : discordUserID
+    };
+    return listener;
+}
+function makeSettings(){
+    let settings = {
+        listeners : []
+    };
+    settings.listeners[0] = makeListener("","","","","");
+    return settings;
 }

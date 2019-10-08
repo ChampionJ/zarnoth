@@ -1,0 +1,15 @@
+{
+  "name": "zarnoth",
+  "version": "0.0.1",
+  "description": "Twitch bot created by Lord Durok",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "tmi.js": "^1.5.0",
+    "webhook-discord": "^3.5.1"
+  }
+}

@@ -46,22 +46,40 @@ client.connect();
 // Called every time a message comes in
 function onMessageHandler (target, context, msg, self) {
     if (self) { return; } // Ignore messages from the bot
+    if(context["display-name"] == "Moobot") { return;}
+    let globalIgnored = settings.ignoredUsers.find(user => user == context.username);
+    if(globalIgnored != undefined){
+        return;
+    }
     let timer = performance.now();
-    // Remove whitespace from chat message
+    // Remove whitespace from edges of chat message
     let messageString = msg.trim();
 
     if(messageString[0] != '!'){ //check if they're trying to activate a command
         let filteredListeners = settings.listeners.filter(obj => {return obj.channels.find(channel => channel == target.substr(1));});
         filteredListeners.forEach((element) => {
+            
             if(element.currentlyListening){
-                if (new RegExp(element.aliases.join("|")).test(messageString.toLowerCase())) {
+                if(element.ignoreMods && context.mod){
+                    return;
+                }
+                let filteredIgnored = element.ignoredUsers.find(user => user == context.username);
+                if(filteredIgnored != undefined){
+                    return;
+                }
+                let regString = "\\b";
+                regString += element.aliases.join("\\b|\\b");
+                regString += regString = "\\b";
+
+                if (new RegExp(regString).test(messageString.toLowerCase())) {
+                
                     // At least one match
                     console.log(`* Name was mentioned`);
                     //const sender = target.<display-name>;
                     let webhookmsg = new webhook.MessageBuilder()
                         .setName("Zarnoth")
                         .setColor(element.color)
-                        .addField(context["display-name"] + " " +element.messageText, messageString);
+                        .addField(context["display-name"] + " " +element.messageText + " in " + target, messageString);
                     if(element.discordUserID != null)
                         webhookmsg.setText(`<@${element.discordUserID}>`);
                     
@@ -94,7 +112,7 @@ function onMessageHandler (target, context, msg, self) {
             const webhookmsg = new webhook.MessageBuilder()
                 .setName("Zarnoth")
                 .setColor("#F4D03F")
-                .addField(context["display-name"] +" "+ commandsettings.questionsSettings.messageText, questionString);
+                .addField(context["display-name"] +" "+ commandsettings.questionsSettings.messageText + " in " + target, questionString);
             let hook = new webhook.Webhook(commandsettings.questionsSettings.webhookAddress);
             hook.send(webhookmsg);
             //client.say(target, `${context["display-name"]} your question has been sent`);
@@ -136,7 +154,7 @@ function checkIfMod(context, target){
     return context.mod == true || context.username == target.substr(1);
 }
 
-function makeListener(name, channels, aliases, webhookURL, shouldBeListening, messageText, color, discordUserID = null){
+function makeListener(name, channels, aliases, webhookURL, shouldBeListening, messageText, color, discordUserID = null, ignoredUsers = null, ignoreMods = false){
     let listener = {
         name : name,
         channels : channels,
@@ -145,7 +163,9 @@ function makeListener(name, channels, aliases, webhookURL, shouldBeListening, me
         currentlyListening : shouldBeListening,
         messageText : messageText,
         color: color,
-        discordUserID : discordUserID
+        discordUserID : discordUserID,
+        ignoredUsers : ignoredUsers,
+        ignoreMods : ignoreMods
     };
     return listener;
 }
@@ -162,7 +182,8 @@ function makeQuestionsSettings(){
 function makeCommands(){
     let commands = {
         channel : "",
-        questionsSettings : []
+        questionsSettings : [],
+        ignoredUsers : []
     };
     commands.questionsSettings[0] = makeQuestionsSettings();
     return commands;

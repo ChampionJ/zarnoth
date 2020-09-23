@@ -6,7 +6,7 @@ const tmi = require("tmi.js");
 const options = require("./options");
 const fs = require('fs');
 
-const Discord = require('discord.io');
+const Discord = require('discord.js');
 const logger = require('winston');
 const auth = require('./auth.json');
 
@@ -37,38 +37,22 @@ try {
 const webhook = require("webhook-discord");
 
 
-
-
-// Initialize Discord Bot
 const discordClient = new Discord.Client({
-    token: auth.token,
-    autorun: true
+    partials: ['MESSAGE', 'REACTION']
 });
-discordClient.on('ready', function (evt) {
+discordClient.login(auth.token);
+
+discordClient.on('ready', () => {
     console.log('connected to discord')
     logger.info('Connected');
     logger.info('Logged in as: ');
     logger.info(discordClient.username + ' - (' + discordClient.id + ')');
 });
-discordClient.on('message', function (user, userID, channelID, message, evt) {
-    // Our bot needs to know if it will execute a command
-    // It will listen for messages that will start with `!`
-    if (message.substring(0, 1) == '!') {
-        var args = message.substring(1).split(' ');
-        var cmd = args[0];
-
-        args = args.splice(1);
-        switch (cmd) {
-            // !ping
-            case 'ping':
-                logger.info(user + ' - (' + userID + ')');
-                discordClient.sendMessage({
-                    to: channelID,
-                    message: 'Pong!'
-                });
-                break;
-            // Just add any case commands if you want to..
-        }
+discordClient.on('message', msg => {
+    logger.info(`Message: \n${msg}`)
+    if (msg.content === '!zarnoth') {
+        const embed = new Discord.MessageEmbed().setTitle('A slick little embed').setColor(0xff0000).setDescription('This is a description');
+        msg.channel.send(embed)
     }
 });
 
@@ -135,14 +119,18 @@ function onMessageHandler(target, context, msg, self) {
 
                     // let hook = new webhook.Webhook(element.webhookAddress);
                     // hook.send(webhookmsg);
-
-                    discordClient.sendMessage({
-                        to: element.channelID,
-                        embed: {
-                            "color": element.color,
-                            "fields": [{ "name": context["display-name"] + " " + element.messageText + " in " + target, 'value': messageString }]
-                        }
-                    });
+                    const embed = new Discord.MessageEmbed().setTitle(context["display-name"] + " " + element.messageText + " in " + target).setColor(element.color).setDescription(messageString);
+                    //Discord.MessageEmbed.normalizeField(context["display-name"] + " " + element.messageText + " in " + target, messageString, false)
+                    discordClient.channels.fetch(element.channelID)
+                        .then(channel => channel.send(embed))
+                        .catch(logger.error("Could not fetch channel: " + element.channelID));
+                    // discordClient.sendMessage({
+                    //     to: element.channelID,
+                    //     embed: {
+                    //         color: element.color,
+                    //         fields: [{ name: context["display-name"] + " " + element.messageText + " in " + target, value: messageString }]
+                    //     }
+                    // });
                 }
             }
         });
@@ -167,14 +155,24 @@ function onMessageHandler(target, context, msg, self) {
             if (questionString.length == 0) //make sure they actually ask something
                 return;
 
-            discordClient.sendMessage({
-                to: commandsettings.questionsSettings.channelID,
-                embed: {
-                    "color": 16044095,
-                    "title": "Question!",
-                    "fields": [{ "name": context["display-name"] + " " + commandsettings.questionsSettings.messageText + " in " + target, 'value': questionString }]
-                }
-            });
+
+
+            // discordClient.sendMessage({
+            //     to: commandsettings.questionsSettings.channelID,
+            //     embed: {
+            //         "color": 16044095,
+            //         "title": "Question!",
+            //         "fields": [{ "name": context["display-name"] + " " + commandsettings.questionsSettings.messageText + " in " + target, 'value': questionString }]
+            //     }
+            // });
+            const embed = new Discord.MessageEmbed()
+                .setTitle('Question: ' + context["display-name"] + " " + commandsettings.questionsSettings.messageText + " in " + target)
+                .setColor(16044095)
+                .setDescription(questionString);
+            //Discord.MessageEmbed.normalizeField(context["display-name"] + " " + element.messageText + " in " + target, messageString, false)
+            discordClient.channels.fetch(commandsettings.questionsSettings.channelID)
+                .then(channel => channel.send(embed))
+                .catch(logger.error("Could not fetch channel: " + commandsettings.questionsSettings.channelID));
             //client.say(target, `${context["display-name"]} your question has been sent`);
             logger.info(`* Executed ${commandTriggered} command`);
             break;
@@ -206,16 +204,22 @@ function onMessageHandler(target, context, msg, self) {
                 let statement = "Test!";
                 client.say(target, statement);
 
-                discordClient.sendMessage({
-                    to: "632395641443844097",
-                    message: 'Pong!',
-                    embed: {
-                        "color": 13849600,
-                        "title": "Title!",
-                        "description": "description",
-                        "fields": [{ "name": "field name", 'value': 'field value' }]
-                    }
-                });
+                // discordClient.sendMessage({
+                //     to: "632395641443844097",
+                //     message: 'Pong!',
+                //     embed: {
+                //         "color": 13849600,
+                //         "title": "Title!",
+                //         "description": "description",
+                //         "fields": [{ "name": "field name", 'value': 'field value' }]
+                //     }
+                // });
+
+                const embed = new Discord.MessageEmbed().setTitle('Title!').setColor(13849600).setDescription('description');
+                //Discord.MessageEmbed.normalizeField(context["display-name"] + " " + element.messageText + " in " + target, messageString, false)
+                discordClient.channels.fetch('632395641443844097')
+                    .then(channel => channel.send(embed))
+                    .catch(logger.error("Could not fetch channel: " + element.channelID));
                 logger.info(`* Executed ${commandTriggered} command`);
             }
             break;

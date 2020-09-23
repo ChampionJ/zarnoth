@@ -61,3 +61,4 @@ typings/
 .next
 settings.json
 options.js
+auth.json
